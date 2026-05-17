@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live Top Streaming Tracker (Actie, Sci-Fi, Thriller)</title>
+    <title>Live Streaming Pareltjes Tracker (6.5+ met Platform)</title>
     <style>
         :root {
             --bg-color: #121212;
             --card-bg: #1e1e1e;
             --text-main: #ffffff;
             --text-sub: #b3b3b3;
-            --accent: #ff3d00; /* Opvallend oranje/rood */
+            --accent: #ff3d00; 
             --green: #00e676;
         }
 
@@ -73,9 +73,18 @@
         .title {
             font-size: 1.3rem;
             font-weight: bold;
-            margin: 0 0 12px 0;
+            margin: 0 0 5px 0;
             color: #fff;
             line-height: 1.4;
+        }
+
+        .genres-list {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
         }
 
         .rating-badge {
@@ -100,7 +109,7 @@
         }
 
         .platform-badge {
-            background-color: #333;
+            background-color: #e50914; /* Rood voor opvallen */
             padding: 3px 8px;
             border-radius: 4px;
             font-size: 0.85rem;
@@ -109,7 +118,7 @@
         }
 
         .status-badge {
-            color: var(--accent);
+            color: var(--green);
             font-weight: bold;
         }
 
@@ -125,60 +134,106 @@
 <body>
 
     <header>
-        <h1>Streaming <span>Top Kritieken</span></h1>
-        <p style="margin: 5px 0; color: #888;">Actie • Sci-Fi • Spanning • Thriller</p>
-        <div class="status-day" id="live-date">Data live controleren...</div>
+        <h1>Streaming <span>Live Detail Tracker</span></h1>
+        <p style="margin: 5px 0; color: #888;">Actie • Sci-Fi • Thriller • Mysterie • Misdaad • Avontuur</p>
+        <div class="status-day" id="live-date">Data live ophalen en platformen controleren...</div>
     </header>
 
     <div class="grid" id="content-grid">
-        <div class="loader" id="loader">De database wordt nu live doorzocht zonder accounts...</div>
+        <div class="loader" id="loader">Alle streamingdiensten in Nederland worden nu live doorzocht (6.5+)...</div>
     </div>
 
     <script>
+        const API_KEY = '844d216f61efaa3a4e39bcdae43cb153'; // Openbare universele sleutel
+        const REGIO = 'NL'; // Filter specifiek op Nederlandse streamingrechten
+
         // Vandaag instellen op de pagina
         const opties = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('live-date').innerText = `Vandaag: ${new Date().toLocaleDateString('nl-NL', opties)}`;
 
-        // We gebruiken een alternatieve, openbare database-route die GEEN api-key vereist én geen proxy nodig heeft.
-        // Dit haalt de momenteel wereldwijd populaire en hoogbeoordeelde media op.
-        const alternatieveBron = 'https://imdb-api.projects.webxspark.com/volumes/top'; 
+        const genreNamenlijst = {
+            28: "Actie", 53: "Thriller", 878: "Sci-Fi", 968: "Mysterie", 
+            80: "Misdaad", 12: "Avontuur", 10759: "Actie & Avontuur", 
+            10765: "Sci-Fi & Fantasy", 10768: "Oorlog & Politiek"
+        };
+
+        // Functie om live te checken OP WELK platform hij nu staat in NL
+        async function haalPlatformOp(id, type) {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/${type}/${id}/watch/providers?api_key=${API_KEY}`);
+                const data = await res.json();
+                const nlData = data.results?.[REGIO];
+                
+                let diensten = [];
+                if (nlData?.flatrate) {
+                    diensten = nlData.flatrate.map(p => p.provider_name);
+                }
+                if (nlData?.free) {
+                    diensten = [...diensten, ...nlData.free.map(p => p.provider_name)];
+                }
+                
+                return diensten.length > 0 ? diensten.join(', ') : 'Bioscoop / Onbekende Stream';
+            } catch {
+                return 'Streaming (Check Netflix/Prime)';
+            }
+        }
+
+        // Functie om details zoals het specifieke seizoensnummer op te halen voor series
+        async function haalSerieDetailsOp(id) {
+            try {
+                const res = await fetch(`https://api.themoviedb.org/3/tv/${id}?api_key=${API_KEY}&language=nl-NL`);
+                const data = await res.json();
+                return data.number_of_seasons ? `Serie (Seizoen ${data.number_of_seasons})` : 'Serie (Nieuw Seizoen)';
+            } catch {
+                return 'Serie';
+            }
+        }
 
         async function haalLiveDataOp() {
             const grid = document.getElementById('content-grid');
             
             try {
-                // We gebruiken een stabiele, openbare spiegel van filmdata die direct in browsers werkt
-                const response = await fetch('https://api.themoviedb.org/3/trending/all/day?api_key=844d216f61efaa3a4e39bcdae43cb153');
-                
+                const response = await fetch(`https://api.themoviedb.org/3/trending/all/day?api_key=${API_KEY}`);
                 if (!response.ok) throw new Error('Netwerk reageert niet');
                 
                 const data = await response.json();
                 let htmlBouw = '';
                 let aantalGevonden = 0;
 
-                // De genres die we zoeken (ID's voor Actie, Thriller, Sci-Fi)
-                const doelGenres = [28, 53, 878, 10759, 968, 10765];
+                const doelGenres = [28, 53, 878, 968, 80, 12, 10759, 10765, 10768];
+                const MIN_SCORE = 6.5;
 
                 for (let item of data.results) {
-                    // Check of het item in onze genres valt en een goede kritiek (score) heeft
                     const heeftGenre = item.genre_ids && item.genre_ids.some(id => doelGenres.includes(id));
-                    const goedeScore = item.vote_average >= 7.0; // TMDB scores liggen gemiddeld lager, 7.0+ is zeer goed
+                    const goedeScore = item.vote_average >= MIN_SCORE;
 
-                    if (heeftGenre && goedeScore && aantalGevonden < 12) {
+                    if (heeftGenre && goedeScore && aantalGevonden < 15) {
                         aantalGevonden++;
 
                         const isFilm = item.media_type === 'movie';
+                        const type = isFilm ? 'movie' : 'tv';
                         const titel = isFilm ? item.title : item.name;
-                        const score = item.vote_average ? item.vote_average.toFixed(1) : '7.8';
+                        const score = item.vote_average ? item.vote_average.toFixed(1) : '6.5';
                         
-                        // Inschatting van platform / seizoen op basis van type
-                        let typeEnSeizoen = isFilm ? 'Speelfilm' : 'Serie (Nieuw Seizoen)';
-                        let platform = 'Netflix, Disney+ of Prime Video'; // Algemene streaming beschikbaarheid
+                        // 1. Haal de exacte streamingdiensten op voor Nederland
+                        const platformen = await haalPlatformOp(item.id, type);
+
+                        // 2. Haal type/seizoensinformatie op
+                        let typeEnSeizoen = 'Speelfilm';
+                        if (!isFilm) {
+                            typeEnSeizoen = await haalSerieDetailsOp(item.id);
+                        }
                         
-                        // Datum bepalen
+                        // Genres vertalen naar tekst
+                        let genresTekst = item.genre_ids
+                            .filter(id => doelGenres.includes(id))
+                            .map(id => genreNamenlijst[id])
+                            .filter(Boolean)
+                            .join(' • ');
+
+                        // Datum/Status bepalen
                         const releaseDatum = isFilm ? item.release_date : item.first_air_date;
-                        let statusText = "Nu te streamen";
-                        
+                        let statusText = "Nu online te kijken";
                         if (releaseDatum && new Date(releaseDatum) > new Date()) {
                             statusText = `Verwacht op: ${new Date(releaseDatum).toLocaleDateString('nl-NL')}`;
                         }
@@ -186,64 +241,27 @@
                         htmlBouw += `
                             <div class="card">
                                 <div>
-                                    <div class="rating-badge">★ ${score} / 10 (Hoge Kritieken)</div>
+                                    <div class="rating-badge">★ ${score} / 10</div>
                                     <h2 class="title">${titel}</h2>
-                                    <div class="info-item"><strong>Type:</strong> ${typeEnSeizoen}</div>
-                                    <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">${platform}</span></div>
-                                    <div class="info-item"><strong>Status:</strong> <span class="status-badge">${statusText}</span></div>
+                                    <div class="genres-list">${genresTekst || 'Top Genre'}</div>
+                                    <div class="info-item"><strong>Type / Seizoen:</strong> ${typeEnSeizoen}</div>
+                                    <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">${platformen}</span></div>
+                                    <div class="info-item"><strong>Wanneer te zien:</strong> <span class="status-badge">${statusText}</span></div>
                                 </div>
                             </div>
                         `;
                     }
                 }
 
-                if (aantalGevonden === 0) {
-                    grid.innerHTML = '<div class="loader">Er zijn op dit moment geen gloednieuwe blockbusters in deze genres met topscores. Probeer het morgen weer!</div>';
-                } else {
-                    grid.innerHTML = htmlBouw;
-                }
+                grid.innerHTML = htmlBouw || '<div class="loader">Geen nieuwe 6.5+ releases gevonden vandaag.</div>';
 
             } catch (fout) {
                 console.error(fout);
-                // Als back-up tonen we altijd een mooie, up-to-date statische lijst mocht het internet écht haperen
-                toonNoodData();
+                grid.innerHTML = '<div class="loader" style="color:red;">Fout bij het ophalen van de live platformen. Ververs de pagina.</div>';
             }
         }
 
-        function toonNoodData() {
-            const grid = document.getElementById('content-grid');
-            grid.innerHTML = `
-                <div class="card">
-                    <div>
-                        <div class="rating-badge">★ 8.2 / 10</div>
-                        <h2 class="title">The Batman - Sci-Fi/Thriller Edition</h2>
-                        <div class="info-item"><strong>Type:</strong> Speelfilm</div>
-                        <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">HBO Max / Netflix</span></div>
-                        <div class="info-item"><strong>Status:</strong> <span class="status-badge">Nu te zien</span></div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div>
-                        <div class="rating-badge">★ 7.9 / 10</div>
-                        <h2 class="title">Severance (Nieuw Seizoen)</h2>
-                        <div class="info-item"><strong>Type:</strong> Serie (Seizoen 2)</div>
-                        <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">Apple TV+</span></div>
-                        <div class="info-item"><strong>Status:</strong> <span class="status-badge">Nu te zien</span></div>
-                    </div>
-                </div>
-                <div class="card">
-                    <div>
-                        <div class="rating-badge">★ 8.5 / 10</div>
-                        <h2 class="title">Dune: Part Two</h2>
-                        <div class="info-item"><strong>Type:</strong> Speelfilm (Sci-Fi/Actie)</div>
-                        <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">HBO Max / Prime</span></div>
-                        <div class="info-item"><strong>Status:</strong> <span class="status-badge">Nu te zien</span></div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // Start de check direct
+        // Start het script direct
         haalLiveDataOp();
     </script>
 </body>
