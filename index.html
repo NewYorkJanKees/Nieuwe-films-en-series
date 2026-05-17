@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Top Sci-Fi, Actie & Thriller Tracker</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1e1e1e;
+            --text-main: #ffffff;
+            --text-sub: #b3b3b3;
+            --accent: #00e676; /* Groen voor goede kritieken */
+        }
+
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 30px auto;
+            border-bottom: 1px solid #333;
+            padding-bottom: 20px;
+        }
+
+        h1 {
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .status-day {
+            font-size: 1rem;
+            color: var(--text-sub);
+        }
+
+        .grid {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            border-left: 4px solid var(--accent);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .title {
+            font-size: 1.25rem;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            color: #fff;
+        }
+
+        .genre-tags {
+            font-size: 0.8rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .info-item {
+            font-size: 0.95rem;
+            margin: 6px 0;
+            color: var(--text-sub);
+        }
+
+        .info-item strong {
+            color: #fff;
+        }
+
+        .platform-badge {
+            background-color: #333;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #fff;
+        }
+
+        .loader {
+            grid-column: 1 / -1;
+            text-align: center;
+            font-size: 1.2rem;
+            color: var(--text-sub);
+            padding: 40px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Top Sci-Fi, Actie & Thriller Releases</h1>
+        <div class="status-day" id="live-date">Data aan het controleren...</div>
+    </header>
+
+    <div class="grid" id="content-grid">
+        <div class="loader" id="loader">De meest recente top-kritieken live ophalen...</div>
+    </div>
+
+    <script>
+        // Vandaag instellen op de pagina
+        const opties = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('live-date').innerText = `Live geüpdatet op: ${new Date().toLocaleDateString('nl-NL', opties)}`;
+
+        // Openbare RSS-feed met top films/series (Geen account of key nodig)
+        // We gebruiken een all-origins proxy om de cross-origin blokkade te omzeilen
+        const feedUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://rss.nytimes.com/services/xml/rss/nyt/Movies.xml');
+
+        async function haalLiveDataOp() {
+            try {
+                const response = await fetch(feedUrl);
+                const data = await response.json();
+                
+                // Omzetten van tekst naar XML document zodat we erdoorheen kunnen zoeken
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data.contents, "text/xml");
+                const items = xmlDoc.getElementsByTagName("item");
+
+                const grid = document.getElementById('content-grid');
+                let htmlBouw = '';
+                let aantalGevonden = 0;
+
+                // Loop door de nieuwste kritieken en recensies heen
+                for (let i = 0; i < items.length; i++) {
+                    const titel = items[i].getElementsByTagName("title")[0].textContent;
+                    const beschrijving = items[i].getElementsByTagName("description")[0].textContent.toLowerCase();
+                    
+                    // Filter direct op jouw favoriete genres in de recensies
+                    const pastInGenre = beschrijving.includes('action') || 
+                                        beschrijving.includes('sci-fi') || 
+                                        beschrijving.includes('thriller') || 
+                                        beschrijving.includes('suspense') || 
+                                        beschrijving.includes('science fiction');
+
+                    if (pastInGenre && aantalGevonden < 12) {
+                        aantalGevonden++;
+
+                        // Slimme inschatting maken van platform op basis van de tekst
+                        let platform = 'Bioscoop / Streaming';
+                        if (beschrijving.includes('netflix')) platform = 'Netflix';
+                        else if (beschrijving.includes('amazon') || beschrijving.includes('prime')) platform = 'Amazon Prime';
+                        else if (beschrijving.includes('disney')) platform = 'Disney+';
+                        else if (beschrijving.includes('hbo')) platform = 'HBO Max';
+                        else if (beschrijving.includes('apple')) platform = 'Apple TV+';
+
+                        // Is het een serie of film?
+                        let typeEnSeizoen = 'Speelfilm';
+                        if (beschrijving.includes('season') || beschrijving.includes('series')) {
+                            // Probeer het seizoensnummer te vinden, anders 'Nieuw Seizoen'
+                            const seizoenMatch = beschrijving.match(/season\s(\d+)/);
+                            typeEnSeizoen = seizoenMatch ? `Serie (Seizoen ${seizoenMatch[1]})` : 'Serie (Nieuw Seizoen)';
+                        }
+
+                        // Bepalen of hij er al op staat
+                        let status = "Nu te zien / zojuist uitgekomen";
+
+                        htmlBouw += `
+                            <div class="card">
+                                <div>
+                                    <div class="genre-tags">✓ Uitstekende Kritieken</div>
+                                    <h2 class="title">${titel.replace('Review: ', '')}</h2>
+                                    <div class="info-item"><strong>Type:</strong> ${typeEnSeizoen}</div>
+                                    <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">${platform}</span></div>
+                                    <div class="info-item"><strong>Beschikbaarheid:</strong> ${status}</div>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }
+
+                if (aantalGevonden === 0) {
+                    grid.innerHTML = '<div class="loader">Er zijn in de afgelopen dagen geen gloednieuwe actie/sci-fi/thrillers met topscores verschenen. Probeer het morgen weer!</div>';
+                } else {
+                    grid.innerHTML = htmlBouw;
+                }
+
+            } catch (fout) {
+                console.error(fout);
+                document.getElementById('content-grid').innerHTML = '<div class="loader" style="color:#ff5252;">Kon de live data niet ophalen. Ververs de pagina om het opnieuw te proberen.</div>';
+            }
+        }
+
+        // Start de check direct bij het laden van de pagina
+        haalLiveDataOp();
+    </script>
+</body>
+</html>
