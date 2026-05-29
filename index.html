@@ -156,14 +156,25 @@
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('live-date').innerText = `Today: ${new Date().toLocaleDateString('en-US', dateOptions)}`;
 
-        // Public TMDB API Key 
-        // TIP: If it shows an API error, replace this key with your own free key from themoviedb.org
         const API_KEY = '8407ff27cb9df770f6e91f153096055d'; 
         
+        // Helper function to force a timeout if the network requests hang
+        async function fetchWithTimeout(url, options = {}, timeout = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                clearTimeout(id);
+                return response;
+            } catch (error) {
+                clearTimeout(id);
+                throw error;
+            }
+        }
+
         async function fetchLiveData() {
             const grid = document.getElementById('content-grid');
             
-            // Safe date formatting helper
             const formatDate = (date) => {
                 const year = date.getFullYear();
                 const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -184,10 +195,14 @@
             const genreNames = { 28: "Action", 12: "Adventure", 878: "Sci-Fi", 53: "Thriller", 18: "Drama", 35: "Comedy", 80: "Crime", 9648: "Mystery" };
 
             try {
-                const [movieResponse, tvResponse] = await Promise.all([fetch(movieUrl), fetch(tvUrl)]);
+                // Fetch with a 5-second maximum loading window
+                const [movieResponse, tvResponse] = await Promise.all([
+                    fetchWithTimeout(movieUrl, {}, 5000),
+                    fetchWithTimeout(tvUrl, {}, 5000)
+                ]);
                 
                 if (!movieResponse.ok || !tvResponse.ok) {
-                    throw new Error(`API Error: Movie Status ${movieResponse.status} / TV Status ${tvResponse.status}`);
+                    throw new Error(`API Connection Failed (Status: ${movieResponse.status}/${tvResponse.status})`);
                 }
 
                 const movies = await movieResponse.json();
@@ -234,4 +249,48 @@
                     return;
                 }
 
-                let htmlBuilder =
+                let htmlBuilder = '';
+                for (let item of combinedList) {
+                    const badgeClass = parseFloat(item.score) >= 6.5 ? 'good' : '';
+                    htmlBuilder += `
+                        <div class="card">
+                            <div>
+                                <div class="rating-badge ${badgeClass}">★ ${item.score} / 10</div>
+                                <h2 class="title">${item.title}</h2>
+                                <div class="genres-list">${item.genres || 'Action / Sci-Fi / Thriller'}</div>
+                                <div class="description">${item.description}</div>
+                                <div class="info-item"><strong>Type:</strong> ${item.type}</div>
+                                <div class="info-item"><strong>Release:</strong> <span class="status-badge">Released: ${item.displayDate}</span></div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                grid.innerHTML = htmlBuilder;
+
+            } catch (error) {
+                console.error("Tracker Error:", error);
+                
+                let friendlyMessage = error.message;
+                if (error.name === 'AbortError') {
+                    friendlyMessage = "The request timed out. Connection to TMDB is being blocked or is too slow.";
+                }
+
+                grid.innerHTML = `
+                    <div class="loader" style="color: #ff3d00;">
+                        <strong>Database Connection Failed</strong><br>
+                        <span style="font-size:0.9rem; color:#aaa;">${friendlyMessage}</span><br><br>
+                        <div style="font-size:0.85rem; text-align:left; max-width:500px; margin:0 auto; background:#222; padding:15px; border-radius:6px; color:#ccc;">
+                            <strong>How to fix this:</strong><br>
+                            1. Turn off your <strong>Adblocker</strong> or <strong>Brave Shields</strong> for this page.<br>
+                            2. Check if you are connected to a restrictive VPN or school/work network.<br>
+                            3. Open the file in a different browser (like Chrome or Edge).
+                        </div>
+                    </div>`;
+            }
+        }
+
+        fetchLiveData();
+    </script>
+</body>
+</html>
