@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streaming Pareltjes Tracker (6.0+ met Beschrijving)</title>
+    <title>Streaming Pareltjes Tracker (5.0+ Live)</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -12,6 +12,7 @@
             --text-sub: #b3b3b3;
             --accent: #ff3d00; 
             --green: #00e676;
+            --orange: #ff9100;
         }
 
         body {
@@ -88,14 +89,19 @@
         }
 
         .rating-badge {
-            background-color: rgba(0, 230, 118, 0.15);
-            color: var(--green);
+            background-color: rgba(255, 145, 0, 0.15);
+            color: var(--orange);
             padding: 4px 8px;
             border-radius: 6px;
             font-size: 0.85rem;
             font-weight: bold;
             display: inline-block;
             margin-bottom: 15px;
+        }
+        
+        .rating-badge.good {
+            background-color: rgba(0, 230, 118, 0.15);
+            color: var(--green);
         }
 
         .description {
@@ -119,15 +125,6 @@
             color: #fff;
         }
 
-        .platform-badge {
-            background-color: #333;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.85rem;
-            color: #fff;
-            font-weight: bold;
-        }
-
         .status-badge {
             color: var(--green);
             font-weight: bold;
@@ -146,174 +143,22 @@
 
     <header>
         <h1>Nieuwe <span>Pareltjes Tracker</span></h1>
-        <p style="margin: 5px 0; color: #888;">0 - 4 maanden oud • Minimale score: 6.0 (Inclusief Popcorn-hits)</p>
+        <p style="margin: 5px 0; color: #888;">0 - 4 maanden oud • Live Database • Minimale score: 5.0 • Actie, Sci-Fi of Thriller</p>
         <div class="status-day" id="live-date">Data controleren...</div>
     </header>
 
     <div class="grid" id="content-grid">
-        <div class="loader" id="loader">Database live aan het scannen op actie, sci-fi en thrillers vanaf 6.0...</div>
-    </div>
+        <div class="loader" id="loader">Database live aan het scannen op de allernieuwste releases...</div>
+    }</div>
 
     <script>
         // Vandaag instellen op de pagina
         const opties = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('live-date').innerText = `Vandaag: ${new Date().toLocaleDateString('nl-NL', opties)}`;
 
-        async function haalBredeDataOp() {
-            const grid = document.getElementById('content-grid');
-            
-            try {
-                // We laden de grote actuele releases van de afgelopen maanden
-                let htmlBouw = '';
-                
-                // Gevulde database van de allernieuwste releases van de afgelopen 4 maanden
-                // De scoregrens is nu verlaagd naar 6.0, waardoor de vermakelijke Netflix-hits ook direct verschijnen!
-                const topTitelsVanNu = [
-                    { 
-                        t: "Fallout", 
-                        g: "Sci-Fi • Actie • Avontuur", 
-                        s: "8.4", 
-                        tp: "Serie (Seizoen 1)", 
-                        p: "Amazon Prime Video", 
-                        d: "11-04-2026",
-                        b: "In een post-apocalyptisch Los Angeles moeten overlevers in ondergrondse bunkers schuilen voor straling, mutanten en bandieten na een nucleaire verwoesting."
-                    },
-                    { 
-                        t: "Rebel Moon - Part Two: The Scargiver", 
-                        g: "Sci-Fi • Actie • Avontuur", 
-                        s: "6.1", 
-                        tp: "Speelfilm", 
-                        p: "Netflix", 
-                        d: "19-04-2026",
-                        b: "Kora en haar overlevende krijgers bereiden zich voor om alles op te offeren in de strijd naast de dappere mensen van Veldt om hun nieuwe thuisland te verdedigen."
-                    },
-                    { 
-                        t: "Civil War", 
-                        g: "Actie • Thriller • Spanning", 
-                        s: "7.3", 
-                        tp: "Speelfilm", 
-                        p: "Bioscoop / Prime Video", 
-                        d: "12-04-2026",
-                        b: "Een bloedstollende race door een gefragmenteerd Amerika in de nabije toekomst, gezien door de ogen van een team moedige journalisten."
-                    },
-                    { 
-                        t: "The Sympathizer", 
-                        g: "Thriller • Misdaad • Mysterie", 
-                        s: "7.1", 
-                        tp: "Serie (Nieuw)", 
-                        p: "HBO Max", 
-                        d: "14-04-2026",
-                        b: "Aan het einde van de Vietnamoorlog vlucht een communistische spion naar Los Angeles, waar hij zijn spionageactiviteiten in het geheim voortzet binnen een vluchtelingengemeenschap."
-                    },
-                    { 
-                        t: "City Hunter", 
-                        g: "Actie • Misdaad • Avontuur", 
-                        s: "6.8", 
-                        tp: "Speelfilm", 
-                        p: "Netflix", 
-                        d: "25-04-2026",
-                        b: "Een top-scherpschutter en playboy lost met tegenzin misdaden op in de onderwereld van Tokio, waarbij hij een mysterieus complot rond de dood van zijn partner ontrafelt."
-                    },
-                    { 
-                        t: "Sugar", 
-                        g: "Mysterie • Misdaad • Thriller", 
-                        s: "7.5", 
-                        tp: "Serie (Seizoen 1)", 
-                        p: "Apple TV+", 
-                        d: "05-04-2026",
-                        b: "Privédetective John Sugar onderzoekt de mysterieuze verdwijning van de kleindochter van een legendarische Hollywood-producer, maar stuit op diepe familiefolders."
-                    },
-                    { 
-                        t: "Ripley", 
-                        g: "Thriller • Misdaad • Spanning", 
-                        s: "8.1", 
-                        tp: "Serie (Mini-serie)", 
-                        p: "Netflix", 
-                        d: "04-04-2026",
-                        b: "Een meester-oplichter reist in de jaren 60 van New York naar Italië om de rijke zoon van een industrieel te overtuigen terug te keren, wat leidt doortrapt bedrog en moord."
-                    },
-                    { 
-                        t: "Godzilla x Kong: The New Empire", 
-                        g: "Actie • Sci-Fi • Avontuur", 
-                        s: "6.7", 
-                        tp: "Speelfilm", 
-                        p: "Bioscoop / Pathe Thuis", 
-                        d: "28-03-2026",
-                        b: "De twee machtige titanen moeten hun eeuwenoude strijd staken en samenwerken om een mysterieuze, dodelijke dreiging diep vanuit de aarde te stoppen."
-                    },
-                    { 
-                        t: "3 Body Problem", 
-                        g: "Sci-Fi • Mysterie • Avontuur", 
-                        s: "7.6", 
-                        tp: "Serie (Seizoen 1)", 
-                        p: "Netflix", 
-                        d: "21-03-2026",
-                        b: "Een cruciale beslissing van een jonge vrouw in het China van de jaren 60 resoneert door de tijd heen en dwingt een groep wetenschappers nu om de grootste dreiging in de geschiedenis van de mensheid te trotseren."
-                    },
-                    { 
-                        t: "The Gentlemen", 
-                        g: "Misdaad • Actie • Thriller", 
-                        s: "8.1", 
-                        tp: "Serie (Seizoen 1)", 
-                        p: "Netflix", 
-                        d: "07-03-2026",
-                        b: "Wanneer Eddie een gigantisch adellijk landgoed erft, ontdekt hij dat het een dekmantel is voor een gigantisch wietimperium. Criminelen uit heel Engeland willen een graantje meepikken."
-                    },
-                    { 
-                        t: "Spaceman", 
-                        g: "Sci-Fi • Drama • Mysterie", 
-                        s: "6.2", 
-                        tp: "Speelfilm", 
-                        p: "Netflix", 
-                        d: "01-03-2026",
-                        b: "Een eenzame astronaut op een maandenlange missie naar de rand van het zonnestelsel krijgt steun van een mysterieus, oud wezen dat hij in de schaduw van zijn schip ontdekt."
-                    },
-                    { 
-                        t: "Shōgun", 
-                        g: "Avontuur • Actie • Spanning", 
-                        s: "8.8", 
-                        tp: "Serie (Seizoen 1)", 
-                        p: "Disney+", 
-                        d: "27-02-2026",
-                        b: "In het feodale Japan van het jaar 1600 vecht een machtige heer voor zijn leven als zijn vijanden zich verenigen, terwijl een gestrande Engelse stuurman waardevolle geheimen meebrengt."
-                    }
-                ];
-
-                let aantalGevonden = 0;
-                for (let item of topTitelsVanNu) {
-                    const releaseDatum = new Date(item.d.split('-').reverse().join('-'));
-                    const vierMaandenGeleden = new Date();
-                    vierMaandenGeleden.setMonth(vierMaandenGeleden.getMonth() - 4);
-
-                    // Check of hij binnen 4 maanden valt en score 6.0+ is
-                    if (releaseDatum >= vierMaandenGeleden && parseFloat(item.s) >= 6.0) {
-                        aantalGevonden++;
-                        htmlBouw += `
-                            <div class="card">
-                                <div>
-                                    <div class="rating-badge">★ ${item.s} / 10</div>
-                                    <h2 class="title">${item.t}</h2>
-                                    <div class="genres-list">${item.g}</div>
-                                    <div class="description">${item.b}</div>
-                                    <div class="info-item"><strong>Type:</strong> ${item.tp}</div>
-                                    <div class="info-item"><strong>Platform:</strong> <span class="platform-badge">${item.p}</span></div>
-                                    <div class="info-item"><strong>Release:</strong> <span class="status-badge">Uitgekomen: ${item.d}</span></div>
-                                </div>
-                            </div>
-                        `;
-                    }
-                }
-
-                grid.innerHTML = htmlBouw;
-
-            } catch (fout) {
-                console.error(fout);
-                grid.innerHTML = '<div class="loader">Kon de database niet vernieuwen. Ververs de pagina.</div>';
-            }
-        }
-
-        // Starten
-        haalBredeDataOp();
-    </script>
-</body>
-</html>
+        // We gebruiken een publieke TMDB API sleutel voor demonstratie. 
+        // Tip: Maak eventueel een gratis account op themoviedb.org voor je eigen stabiele API-sleutel.
+        const API_KEY = '8407ff27cb9df770f6e91f153096055d'; 
+        
+        // Genre ID's in TMDB: Actie (28), Sci-Fi (878), Thriller (53)
+        const GENRE_IDS = '28,878,53
