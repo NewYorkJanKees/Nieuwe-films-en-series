@@ -1,9 +1,10 @@
+```html
 <!DOCTYPE html>
-<html lang="nl">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streaming Pareltjes Tracker (5.0+ Live)</title>
+    <title>Streaming Gems Tracker (5.0+ Live)</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -142,23 +143,32 @@
 <body>
 
     <header>
-        <h1>Nieuwe <span>Pareltjes Tracker</span></h1>
-        <p style="margin: 5px 0; color: #888;">0 - 4 maanden oud • Live Database • Minimale score: 5.0 • Actie, Sci-Fi of Thriller</p>
-        <div class="status-day" id="live-date">Data controleren...</div>
+        <h1>New <span>Gems Tracker</span></h1>
+        <p style="margin: 5px 0; color: #888;">0 - 4 months old • Live Database • Minimum score: 5.0 • Action, Sci-Fi or Thriller</p>
+        <div class="status-day" id="live-date">Checking data...</div>
     </header>
 
     <div class="grid" id="content-grid">
-        <div class="loader" id="loader">Database live aan het scannen op de allernieuwste releases...</div>
-    }</div>
+        <div class="loader" id="loader">Scanning live database for the latest releases...</div>
+    </div>
 
     <script>
-        // Vandaag instellen op de pagina
-        const opties = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('live-date').innerText = `Vandaag: ${new Date().toLocaleDateString('nl-NL', opties)}`;
+        // Set today's date in English
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('live-date').innerText = `Today: ${new Date().toLocaleDateString('en-US', options)}`;
 
-        // We gebruiken een publieke TMDB API sleutel voor demonstratie. 
-        // Tip: Maak eventueel een gratis account op themoviedb.org voor je eigen stabiele API-sleutel.
         const API_KEY = '8407ff27cb9df770f6e91f153096055d'; 
         
-        // Genre ID's in TMDB: Actie (28), Sci-Fi (878), Thriller (53)
-        const GENRE_IDS = '28,878,53
+        async function haalLiveDataOp() {
+            const grid = document.getElementById('content-grid');
+            
+            const vandaag = new Date();
+            const vierMaandenGeleden = new Date();
+            vierMaandenGeleden.setMonth(vierMaandenGeleden.getMonth() - 4);
+
+            const formatteerDatum = (d) => d.toISOString().split('T')[0];
+            const datumTot = formatteerDatum(vandaag);
+            const datumVan = formatteerDatum(vierMaandenGeleden);
+
+            // Changed language to en-US for English descriptions
+            const filmUrl =
