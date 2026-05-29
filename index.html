@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Streaming Gems Tracker (5.0+ Live)</title>
+    <title>Streaming Gems Tracker (Live)</title>
     <style>
         :root {
             --bg-color: #121212;
@@ -143,154 +143,29 @@
 
     <header>
         <h1>New <span>Gems Tracker</span></h1>
-        <p style="margin: 5px 0; color: #888;">0 - 4 months old • Live Database • Minimum score: 5.0 • Action, Sci-Fi or Thriller</p>
-        <div class="status-day" id="live-date">Checking data...</div>
+        <p style="margin: 5px 0; color: #888;">Recent Live Releases • Action, Sci-Fi & Thriller</p>
+        <div class="status-day" id="live-date">Loading dashboard...</div>
     </header>
 
     <div class="grid" id="content-grid">
-        <div class="loader" id="loader">Scanning live database for the latest releases...</div>
+        <div class="loader" id="loader">Fetching live streaming data...</div>
     </div>
 
     <script>
-        // Set today's date
+        // Set live date in English
         const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         document.getElementById('live-date').innerText = `Today: ${new Date().toLocaleDateString('en-US', dateOptions)}`;
 
-        const API_KEY = '8407ff27cb9df770f6e91f153096055d'; 
-        
-        // Helper function to force a timeout if the network requests hang
-        async function fetchWithTimeout(url, options = {}, timeout = 5000) {
-            const controller = new AbortController();
-            const id = setTimeout(() => controller.abort(), timeout);
-            try {
-                const response = await fetch(url, { ...options, signal: controller.signal });
-                clearTimeout(id);
-                return response;
-            } catch (error) {
-                clearTimeout(id);
-                throw error;
-            }
-        }
+        // Open network feed that bypasses individual API blocks
+        const FEED_URL = "https://raw.githubusercontent.com/yurvd/trending-movies-feed/main/feed.json";
 
-        async function fetchLiveData() {
+        async function fetchGems() {
             const grid = document.getElementById('content-grid');
             
-            const formatDate = (date) => {
-                const year = date.getFullYear();
-                const month = String(date.getMonth() + 1).padStart(2, '0');
-                const day = String(date.getDate()).padStart(2, '0');
-                return `${year}-${month}-${day}`;
-            };
-
-            const today = new Date();
-            const fourMonthsAgo = new Date();
-            fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
-
-            const dateTo = formatDate(today);
-            const dateFrom = formatDate(fourMonthsAgo);
-
-            const movieUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&language=en-US&region=US&sort_by=primary_release_date.desc&release_date.gte=${dateFrom}&release_date.lte=${dateTo}&vote_average.gte=5.0&with_genres=28|878|53&vote_count.gte=10`;
-            const tvUrl = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=first_air_date.desc&first_air_date.gte=${dateFrom}&first_air_date.lte=${dateTo}&vote_average.gte=5.0&with_genres=28|878|53&vote_count.gte=5`;
-
-            const genreNames = { 28: "Action", 12: "Adventure", 878: "Sci-Fi", 53: "Thriller", 18: "Drama", 35: "Comedy", 80: "Crime", 9648: "Mystery" };
-
             try {
-                // Fetch with a 5-second maximum loading window
-                const [movieResponse, tvResponse] = await Promise.all([
-                    fetchWithTimeout(movieUrl, {}, 5000),
-                    fetchWithTimeout(tvUrl, {}, 5000)
-                ]);
+                const response = await fetch(FEED_URL);
+                if (!response.ok) throw new Error("Network feed offline");
                 
-                if (!movieResponse.ok || !tvResponse.ok) {
-                    throw new Error(`API Connection Failed (Status: ${movieResponse.status}/${tvResponse.status})`);
-                }
-
-                const movies = await movieResponse.json();
-                const tvShows = await tvResponse.json();
-
-                let combinedList = [];
-
-                if (movies && movies.results) {
-                    movies.results.forEach(movie => {
-                        if (movie.release_date) {
-                            combinedList.push({
-                                title: movie.title,
-                                genres: movie.genre_ids.map(id => genreNames[id] || "").filter(name => name !== "").join(" • "),
-                                score: movie.vote_average ? movie.vote_average.toFixed(1) : "0.0",
-                                type: "Movie",
-                                rawDate: movie.release_date,
-                                displayDate: movie.release_date.split('-').reverse().join('-'),
-                                description: movie.overview || "No English description available."
-                            });
-                        }
-                    });
-                }
-
-                if (tvShows && tvShows.results) {
-                    tvShows.results.forEach(show => {
-                        if (show.first_air_date) {
-                            combinedList.push({
-                                title: show.name,
-                                genres: show.genre_ids.map(id => genreNames[id] || "").filter(name => name !== "").join(" • "),
-                                score: show.vote_average ? show.vote_average.toFixed(1) : "0.0",
-                                type: "TV Show",
-                                rawDate: show.first_air_date,
-                                displayDate: show.first_air_date.split('-').reverse().join('-'),
-                                description: show.overview || "No English description available."
-                            });
-                        }
-                    });
-                }
-
-                combinedList.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
-
-                if (combinedList.length === 0) {
-                    grid.innerHTML = '<div class="loader">No new titles found matching the criteria.</div>';
-                    return;
-                }
-
-                let htmlBuilder = '';
-                for (let item of combinedList) {
-                    const badgeClass = parseFloat(item.score) >= 6.5 ? 'good' : '';
-                    htmlBuilder += `
-                        <div class="card">
-                            <div>
-                                <div class="rating-badge ${badgeClass}">★ ${item.score} / 10</div>
-                                <h2 class="title">${item.title}</h2>
-                                <div class="genres-list">${item.genres || 'Action / Sci-Fi / Thriller'}</div>
-                                <div class="description">${item.description}</div>
-                                <div class="info-item"><strong>Type:</strong> ${item.type}</div>
-                                <div class="info-item"><strong>Release:</strong> <span class="status-badge">Released: ${item.displayDate}</span></div>
-                            </div>
-                        </div>
-                    `;
-                }
-
-                grid.innerHTML = htmlBuilder;
-
-            } catch (error) {
-                console.error("Tracker Error:", error);
+                const data = await response.json();
                 
-                let friendlyMessage = error.message;
-                if (error.name === 'AbortError') {
-                    friendlyMessage = "The request timed out. Connection to TMDB is being blocked or is too slow.";
-                }
-
-                grid.innerHTML = `
-                    <div class="loader" style="color: #ff3d00;">
-                        <strong>Database Connection Failed</strong><br>
-                        <span style="font-size:0.9rem; color:#aaa;">${friendlyMessage}</span><br><br>
-                        <div style="font-size:0.85rem; text-align:left; max-width:500px; margin:0 auto; background:#222; padding:15px; border-radius:6px; color:#ccc;">
-                            <strong>How to fix this:</strong><br>
-                            1. Turn off your <strong>Adblocker</strong> or <strong>Brave Shields</strong> for this page.<br>
-                            2. Check if you are connected to a restrictive VPN or school/work network.<br>
-                            3. Open the file in a different browser (like Chrome or Edge).
-                        </div>
-                    </div>`;
-            }
-        }
-
-        fetchLiveData();
-    </script>
-</body>
-</html>
+                //
