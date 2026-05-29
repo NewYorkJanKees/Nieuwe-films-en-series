@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -153,22 +152,86 @@
     </div>
 
     <script>
-        // Set today's date in English
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        document.getElementById('live-date').innerText = `Today: ${new Date().toLocaleDateString('en-US', options)}`;
+        // Set today's date
+        const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        document.getElementById('live-date').innerText = `Today: ${new Date().toLocaleDateString('en-US', dateOptions)}`;
 
+        // Public TMDB API Key 
+        // TIP: If it shows an API error, replace this key with your own free key from themoviedb.org
         const API_KEY = '8407ff27cb9df770f6e91f153096055d'; 
         
-        async function haalLiveDataOp() {
+        async function fetchLiveData() {
             const grid = document.getElementById('content-grid');
             
-            const vandaag = new Date();
-            const vierMaandenGeleden = new Date();
-            vierMaandenGeleden.setMonth(vierMaandenGeleden.getMonth() - 4);
+            // Safe date formatting helper
+            const formatDate = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            };
 
-            const formatteerDatum = (d) => d.toISOString().split('T')[0];
-            const datumTot = formatteerDatum(vandaag);
-            const datumVan = formatteerDatum(vierMaandenGeleden);
+            const today = new Date();
+            const fourMonthsAgo = new Date();
+            fourMonthsAgo.setMonth(fourMonthsAgo.getMonth() - 4);
 
-            // Changed language to en-US for English descriptions
-            const filmUrl =
+            const dateTo = formatDate(today);
+            const dateFrom = formatDate(fourMonthsAgo);
+
+            const movieUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${API_KEY}&language=en-US&region=US&sort_by=primary_release_date.desc&release_date.gte=${dateFrom}&release_date.lte=${dateTo}&vote_average.gte=5.0&with_genres=28|878|53&vote_count.gte=10`;
+            const tvUrl = `https://api.themoviedb.org/3/discover/tv?api_key=${API_KEY}&language=en-US&sort_by=first_air_date.desc&first_air_date.gte=${dateFrom}&first_air_date.lte=${dateTo}&vote_average.gte=5.0&with_genres=28|878|53&vote_count.gte=5`;
+
+            const genreNames = { 28: "Action", 12: "Adventure", 878: "Sci-Fi", 53: "Thriller", 18: "Drama", 35: "Comedy", 80: "Crime", 9648: "Mystery" };
+
+            try {
+                const [movieResponse, tvResponse] = await Promise.all([fetch(movieUrl), fetch(tvUrl)]);
+                
+                if (!movieResponse.ok || !tvResponse.ok) {
+                    throw new Error(`API Error: Movie Status ${movieResponse.status} / TV Status ${tvResponse.status}`);
+                }
+
+                const movies = await movieResponse.json();
+                const tvShows = await tvResponse.json();
+
+                let combinedList = [];
+
+                if (movies && movies.results) {
+                    movies.results.forEach(movie => {
+                        if (movie.release_date) {
+                            combinedList.push({
+                                title: movie.title,
+                                genres: movie.genre_ids.map(id => genreNames[id] || "").filter(name => name !== "").join(" • "),
+                                score: movie.vote_average ? movie.vote_average.toFixed(1) : "0.0",
+                                type: "Movie",
+                                rawDate: movie.release_date,
+                                displayDate: movie.release_date.split('-').reverse().join('-'),
+                                description: movie.overview || "No English description available."
+                            });
+                        }
+                    });
+                }
+
+                if (tvShows && tvShows.results) {
+                    tvShows.results.forEach(show => {
+                        if (show.first_air_date) {
+                            combinedList.push({
+                                title: show.name,
+                                genres: show.genre_ids.map(id => genreNames[id] || "").filter(name => name !== "").join(" • "),
+                                score: show.vote_average ? show.vote_average.toFixed(1) : "0.0",
+                                type: "TV Show",
+                                rawDate: show.first_air_date,
+                                displayDate: show.first_air_date.split('-').reverse().join('-'),
+                                description: show.overview || "No English description available."
+                            });
+                        }
+                    });
+                }
+
+                combinedList.sort((a, b) => new Date(b.rawDate) - new Date(a.rawDate));
+
+                if (combinedList.length === 0) {
+                    grid.innerHTML = '<div class="loader">No new titles found matching the criteria.</div>';
+                    return;
+                }
+
+                let htmlBuilder =
